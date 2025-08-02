@@ -1,0 +1,174 @@
+\vspace{-1ex}
+\section{Experiments}
+\vspace{-0.9ex}
+\label{sec:experiments}
+In this section, we conduct comprehensive experiments on a variety of  knowledge-intensive NLP tasks to demonstrate the zero-shot capabilities of \ours{}. 
+
+\vspace{-0.5ex}
+\subsection{Experiment Setup}
+\vspace{-0.5ex}
+% We introduce the experiment setup as well as baseline information. Due to space limit, the implementation details are deferred to Appendix~\ref{sec:implementation_details}. 
+\paragraph{Tasks and Datasets.} We consider 3 types of tasks in experiments: (1) \underline{\emph{Open-domain QA} (OpenQA)}, which includes NQ~\citep{nq}, TriviaQA~\citep{triviaqa},  PopQA~\citep{popqa}, HotpotQA~\citep{yang2018hotpotqa} and 2WikimQA~\citep{2wikimqa}. The first three are single-hop QA tasks, while the last two are multi-hop QA datasets.
+For NQ, TriviaQA, and HotpotQA, we use the split from KILT benchmark~\citep{petroni-etal-2021-kilt}
+%%%%%%%%%%% For Arxiv Only %%%%%%%%%%%%%%
+\footnote{The results of NQ and TriviaQA using the split from DPR~\citep{dpr} are in Appendix \ref{sec:nq_tqa_dpr_split}.}.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+(2)~\underline{\emph{Fact verification}}, where we use FEVER~\citep{thorne2018fever} from KILT benchmark. 
+% \citep{petroni-etal-2021-kilt} as the target task.
+% (3) \underline{\emph{Language Understanding}}, where we consider MMLU~\citep{mmlu}, a multiple-choice QA dataset that covers exam questions from 57 tasks in total.
+(3)~\underline{\emph{Conversational QA} (ConvQA)}, we consider three datasets including Doc2Dial~\citep{feng2020doc2dial}, TopiOCQA~\citep{adlakha2022topiocqa} and INSCIT~\citep{wu2023inscit}, which have long documents that cannot be fitted directly into LLMs thus necessitates retrieval and ranking. The detailed dataset information is in Appendix~\ref{sec:main_datasets}.
+
+\noindent \textbf{Baselines.} We consider the following baselines: (1) \underline{\emph{Baseline LLMs without RAG}}, where we consider LLMs trained with proprietary data including InstructGPT~\citep{ouyang2022training}, PaLM 2~\citep{anil2023palm}, FLAN-LaMDA~\citep{longpre2023flan}, GLaM~\citep{du2022glam}, 
+Claude 2~\citep{claude2}, Mixtral-8x22B-Instruct~\citep{Mixtral8x22B}, DeepSeek-V2 Chat~\citep{deepseekai2024deepseekv2} and only use the official reported results.
+We also consider two ChatGPT-series models, namely GPT-3.5-turbo (\texttt{gpt-3.5-turbo-0613})~\citep{chatgpt} and GPT-4 (\texttt{gpt-4-0613})~\citep{gpt4}.
+% FLAN-LaMDA~\citep{longpre2023flan} as well as two ChatGPT-series models, namely GPT-3.5-turbo (\texttt{gpt-3.5-turbo-0613})~\citep{chatgpt} and GPT-4 (\texttt{gpt-4-0613})~\citep{gpt4}. 
+% We directly use the official system prompt and instruction format, and only consider the question or dialogue history as the input. 
+(2)~\underline{\emph{Baselines with retrieval}}, we evaluate models augmented with retrieval. Specifically, we include Atlas~\citep{atlas} and Raven~\citep{huang2023raven}, two RAG models based on encoder-decoder LMs. For decoder-only models, we consider Self-RAG~\citep{asai2024selfrag}, RECOMP~\citep{xu2024recomp}, InstructRetro~\citep{wang2023instructretro}, RePlug~\citep{shi2023replug}, RA-DIT~\citep{lin2024radit}, Llama-3-instruct~\citep{llama3} and ChatQA-1.5~\citep{liu2024chatqa}. 
+We also list the result of RAG pipelines using InstructGPT (175B parameters) as the backbone including GenRead~\citep{genread}, Retrieve-read~\citep{lazaridou2022internet} and  ReFeed~\citep{refeed}, but mainly for reference. 
+% We do not include comparisons with~\citet{activerag,wang2023learning,glass-etal-2022-re2g,robustlm} as they do not focus on zero-shot setting. 
+Other reported numbers are directly comparable if they follow the standard zero-shot settings. 
+
+\noindent \textbf{Evaluation Metrics.} 
+For OpenQA datasets, we use \emph{Exact Match (EM)} as the main metric but also report Accuracy for TriviaQA and PopQA and F1 score for HotpotQA and 2WikimQA as it is used in several studies~\citep{asai2024selfrag,popqa}. 
+For FEVER, we use accuracy as the metric. 
+For ConvQA datasets, we follow \citep{liu2024chatqa,wang2023instructretro} to use F1 score as the metric.
+
+\noindent \textbf{Implementation Details.} 
+We use Llama3 8B and 70B~\citep{llama3} as the backbone in our main experiments. For the two-stage instruction tuning, we set the batch size to 128 and train the model for 1000 steps with learning rate 5e-6 in Stage-I. Then, we reduce the learning rate to 3e-7 for  8B and 2e-7 for 70B model, set the batch size to 64, and train the model for 3300 steps (around 1 epoch). 
+We use the Adam optimizer~\citep{kingma2014adam} with $\beta_1=0.9$ and $\beta_2=0.98$. 
+During the inference stage, we use the December 2018 Wikidump as the corpus index for NQ, TQA, HotpotQA, 2WikimQA, and use the December 2020 Wikidump for PopQA, following~\citep{asai2024selfrag}.
+By default, we follow \citep{wang2023instructretro,lin2024radit,liu2024chatqa} to use the Dragon retriever~\citep{dragon} as default and retrieve top-$N$ ($100$ for 8B and $30$ for 70B) documents for ranking, but \ours{} can be adapted to various retrievers and different $N$ (see \S~\ref{sec:ablation} and \ref{sec:efficiency}). To ensure a fair comparison, we test the performance of $k\in\{5, 10, 20\}$ and report \emph{the best performance} for baselines. 
+For generation, we keep temperature $T=0$ and set the maximum number of generated token to be 32 for OpenQA, 128 for ConvQA and 8 for others. 
+Training \ours{}-8B uses 32 NVIDIA A100 GPUs for 10 hours (4 hours for Stage-I and 6 hours for Stage-II finetuning), while training \ours{}-70B uses 128 NVIDIA A100 GPUs for 16 hours (4 hours for Stage-I and 12 hours for Stage-II  Finetuning). 
+% 1. Main Experiments
+
+% Baseline:
+
+
+% Atlas 11B~\citep{atlas}
+
+% Raven 11B~\citep{huang2023raven}
+
+% InstructRetro 48B~\citep{wang2023instructretro}
+
+% ChatQA~\citep{liu2024chatqa}
+
+
+% RA-DIT~\citep{lin2024radit}
+
+% Self-RAG~\citep{asai2024selfrag}
+
+
+% ------ 
+% GPT-3.5 ?
+% GPT-4? 
+
+
+
+% Chain-of-notes~\citep{yu2023chain}
+
+
+\textbf{Data Contamination Issues.} 
+One possible issue for the zero-shot evaluation is the test set contamination, where some of the task-specific examples overlap with the instruction fine-tuning data~\citep{oren2024proving}. To address this issue, we have performed a string match-based analysis where we do not observe any overlap between the train data and data from target tasks. 
+% \citep{asai2024selfrag,lin2024radit}
+% GPT-synthetic Data: 
+
+\input{tables/main}
+\vspace{-0.2ex}
+\subsection{Main Experiments}
+\vspace{-0.3ex}
+Table \ref{tab:main} presents results of \ours{} and baselines. 
+The findings are summarized as follows:
+
+\noindent \textbf{\ours{} outperforms existing RAG methods.} 
+With 8B scale, \ours{} consistently outperforms ChatQA-1.5 8B, one of the most recent open-sourced model with state-of-the-art performance on many RAG benchmarks. 
+\ours{} 8B is also competitive when compared with baseline models with much more parameters. For example, it significantly outperforms InstructRetro ($5\times$ parameters), RA-DIT 65B~($8\times$ paramters), and even outperforms Llama3-instruct 70B ($8\times$ parameters) on NQ and TriviaQA tasks. 
+With more parameters, \ours{} 70B outperforms the strong ChatQA-1.5 70B model, and largely outperforms previous RAG baselines with InstructGPT as the underlying LLM.  
+% \yue{Add gpt-4 results later.}
+
+\noindent \textbf{\ours{} demonstrates larger improvement on more challenging  datasets.} We observe that the performance gains of \ours{} over baselines are more pronounced for more challenging QA datasets. For example, on long-tailed QA (PopQA) and multi-hop QA (2WikimQA) tasks,  we achieve more than 10\% improvement over ChatQA-1.5.
+% PopQA, a dataset that focuses on long-tailed entities, we achieve more than 12\% improvement over ChatQA-1.5. In addition, for multi-hop QA datasets (e.g. 2WikimQA), we also observe notable relative gains ($>17\%$). 
+These findings suggest that in challenging OpenQA datasets where top documents from retrievers are less relevant to the answer, context ranking effectively enhances performance.
+% These results indicate that for challenging OpenQA datasets when the top-retrieved documents are still less relevant for directly answering the question, context ranking serves as an effective way to further boost performance. 
+In this work we focus on improving single-time retrieval for QA tasks. How to effectively combine multi-round RAG pipelines~\citep{activerag,khattab2022demonstrate,jeong2024adaptive} with \ours{} is an interesting avenue of future work.
+
+\subsection{Experiment on Domain-specific RAG Benchmarks}
+\vspace{-0.8ex}
+\input{tables/medical}
+To demonstrate that \ours{} can adapt to specialized domains, we conduct experiments on Mirage~\citep{xiong2024benchmarking}, a recently introduced RAG benchmark for the biomedical field. 
+We follow \citet{xiong2024benchmarking} to employ MedCPT \citep{jin2023medcpt} as the retriever $\cR$ with MedCorp\footnote{Link: \url{https://huggingface.co/MedRAG}. Detailed dataset information is in Appendix~\ref{sec:biomed_datasets}.} as the corpus $\cD$. 
+
+The experiment results of \ours{} and baselines are shown in Table~\ref{tab:medrag}.  From the table, we observe that \ours{}, even without fine-tuning on the biomedical domain, excels at medical QA tasks.
+% despite not being trained with massive biomedical instruction fine-tuning data,  performs remarkably well on medical QA tasks. 
+% With 8B parameter, \ours{} outperforms Meditron 70B, one of the strongest open-sources LLM dedicated for the medical domain by 6.3\%. 
+Notably, \ours{} 8B surpasses Meditron 70B—a leading open-source LLM for the medical domain—by 6.3\%.
+Besides, \ours{} 70B  attains more than 98\% performance of GPT-4. These results justify \ours{}'s capacity to be readily applied to new domains without extra post-training.
+
+
+\input{tables/ranker}
+
+\vspace{-0.5ex}
+\subsection{A Closer Look at the Ranking Module}
+% \vspace{-0.5ex}
+% \boxin{Should this table be put between 5.2 and 5.3? or even in Main Experiments? as the paper excels in both ranking and generation. The ranking results are also impressive.}
+\label{sec:efficiency}
+As the context ranking serves as a core step in \ours{}, we take a closer look at this component. 
+All the studies are done using Llama3-8B as the backbone. 
+
+\noindent \textbf{\ours{} is Data-efficient.} Previous approaches that infuse context ranking into the RAG pipeline usually involve a separate reranking model. 
+To compare our model with these baselines, we evaluate four models (BERT~\citep{glass-etal-2022-re2g}/T5~\citep{monot5}/Llama3~\citep{repllama}) fine-tuned on the full MS MARCO passage ranking dataset, a strong off-the-shelf reranker model BGE-ranker, and two OpenAI GPT-series models. For the GPT-series models, we use the token probability of `\texttt{True}' as a proxy for the relevance score\footnote{\url{https://platform.openai.com/docs/api-reference/chat/create\#chat-create-logprobs}}. 
+These models are then used to rerank top-retrieved passages by Dragon, similar to our approach.
+Surprisingly, as shown in Table~\ref{tab:ranker}, \ours{} achieves better recall over dedicated ranking models trained on $10\times$ more ranking data for most cases.
+Besides, \ours{} can still outperform the BGE-ranker on most tasks, which has been extensively trained on more than 1 million ranking pairs, including some that overlap with our evaluation tasks. 
+This advantage is likely due to the adaptable nature of our model’s training, where the ranking data closely resembles the general RAG fine-tuning data. 
+% We attribute this success to the transferable design of \ours{} training, as the ranking data shares similar formats with the general RAG fine-tuning data. 
+Directly using ChatQA-1.5 to rank passages \emph{hurts} the performance, indicating the necessity of incorporating ranking data into instruction fine-tuning.
+
+We further study the relation between the number of context ranking data and final performance. As shown in Figure \ref{fig:num_ranking}, with 5k ranking data only ($\sim1\%$ of the MS MARCO dataset), \ours{} can already obtain very compelling results, while further increasing the number of ranking data to 50k yields non-marginal gains. 
+This finding confirms \ours{}'s data efficiency -- achieving effective performance with a modest amount of ranking data and maintaining adaptability across various tasks.
+% This result verifies the data-efficiency of \ours{} -- with moderate amount of ranking data, \ours{} works well and can transfer to different target tasks.
+
+\noindent \textbf{Performance v.s. Time-efficiency for \ours{}.} 
+One specific caveat for scaling up model size is the increment in the latency overhead --- as mentioned in \S \ref{sec:inference}, it requires sample-wise ranking which incurs additional time.
+To study the relation between the time efficiency and performance, we change the $N$ used in reranking and plot the relation of $N$ and final accuracy in Figure \ref{fig:performance_efficiency}, from which 
+we observe that even with $N=20$, \ours{} still improve the baseline model without reranking. 
+% improve R@5 by 9\% on average. 
+% Figure \yue{} further illustrates the relation of final performance and inference time with different $k$. 
+While reranking across $N=20$ to $100$ improves the exact match score by 5.9\% to 9.1\% across three tasks, it incurs an additional $0.9\times$ to $6.0\times$ increase in time -- \emph{significantly less} than the $20\times$ to $100\times$ increase one might expect.
+
+
+\begin{figure}[t!]
+    \vspace{-1.5ex}
+    \centering
+    \begin{minipage}{0.23\textwidth}
+        \centering
+        \subfigure{
+            \includegraphics[width=\textwidth]{Figures/num_ranking_data.pdf}
+        }
+        \vspace{-2ex}
+        \caption{Performance w.r.t. \# Ranking Data}\label{fig:num_ranking}
+    \end{minipage}%
+    \begin{minipage}{0.76\textwidth}
+        \centering
+        \hspace{-6mm}
+        \subfigure[NQ]{
+            \includegraphics[width=0.32\textwidth]{Figures/time_scatter_nq.pdf}
+            \label{fig:temp_esnli}
+        } \hspace{-3mm}
+        \subfigure[TriviaQA]{
+            \includegraphics[width=0.32\textwidth]{Figures/time_scatter_tqa.pdf}
+            \label{fig:temp_openbookqa}
+        } \hspace{-3mm}
+        \subfigure[HotpotQA]{
+            \includegraphics[width=0.32\textwidth]{Figures/time_scatter_hotpotqa.pdf}
+            \label{fig:temp_strategyqa}
+        } \hspace{-6mm}
+        \vspace{-2ex}
+        \caption{\vspace{-1ex}Performance v.s. Efficiency analysis for \ours{}.}\label{fig:performance_efficiency}
+    \end{minipage}%
+    \vspace{-1ex}
+\end{figure}
+
+
+
+\end{document}

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atm_tree_builder"
+version = "0.0.1"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "scikit-learn",
+    "datasets",
+    "evaluate",
+    "transformers",
+    "torch",
+    "faiss-cpu",
+    "lshashpy3",
+    "tqdm",
+    "jupyter",
+    "nbformat",
+]
+
+[tool.setuptools.packages.find]
+where = [""]
+include = ["atm_tree_builder*"]

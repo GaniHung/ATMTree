@@ -1,0 +1,185 @@
+\section{Proposed Method}
+\subsection{Note Costruction and Overview}
+
+\subsubsection{Note Construction}
+The ATMTree organizes a knowledge corpus into a directed tree, formally denoted as $\mathcal{T} = (\mathcal{V}, \mathcal{E})$, where $\mathcal{V}$ is the set of all nodes and $\mathcal{E}$ is the set of edges defining the parent-to-child relationships. This structure imposes a semantically meaningful, hierarchical organization on the data, progressing from broad, abstract concepts at the root to fine-grained details in the deeper layers.
+
+Every node $v \in \mathcal{V}$ in the tree is a uniform structural element, characterized by a core set of attributes:
+\begin{itemize}
+    \item \textbf{An embedding vector ($\mathbf{w}_v$):} A $d$-dimensional vector ($\mathbf{w}_v \in \mathbb{R}^{d}$) that serves as the node's semantic coordinate in a high-dimensional vector space. This is the primary attribute used for similarity calculations.
+    \item \textbf{A parent pointer ($p_v$):} A reference to the node's unique parent, with the root node being the sole exception.
+    \item \textbf{A set of children ($\mathcal{C}_v$):} A set containing all nodes for which $v$ is the immediate parent. Nodes with an empty set of children are considered \textbf{leaf nodes} of the hierarchy.
+    \item \textbf{A depth attribute ($d_v$):} An integer marking the node's level, which indicates its degree of conceptual abstraction within the hierarchy.
+\end{itemize}
+
+\subsubsection{Overview global motivation}
+
+A fundamental challenge plagues existing structured RAG methods: they incur the high overhead of building complex data structures, yet their retrieval mechanisms often fail to leverage this structure, reverting to simple vector searches that ignore the rich interconnections. This creates a disconnect where the significant upfront cost does not fully translate into retrieval benefits.
+
+ATMTree is designed from the ground up to resolve this conflict. Its construction and retrieval processes are intrinsically linked. We bypass expensive, LLM-driven summarization and instead build the hierarchy using a computationally efficient, purely geometric approach. The resulting structure is not merely a passive container but an active component of the search, built specifically to enable a fast, coarse-to-fine retrieval strategy. This ensures the structural investment directly pays off in retrieval performance.
+
+The ATMTree is constructed in a \textbf{top-down} fashion. The process begins after an entire corpus of text chunks $\mathcal{D} = \{d_1, ..., d_N\}$ has been mapped into $d$-dimensional vectors using a pre-trained embedding model $\phi$. A single \textbf{root node} is created to represent the entire dataset. The hierarchy is then built by recursively partitioning the data points using a \textbf{hybrid geometric clustering} strategy. This approach utilizes different clustering algorithms depending on the layer of the tree being processed to optimize the partitioning. Each application of the clustering algorithm groups the vectors into smaller, more semantically coherent sub-clusters, which form the new child nodes. This process continues until a stopping condition is met. A key condition is a hyperparameter for minimum cluster size; when the number of points in a cluster falls below this threshold, the recursive partitioning for that branch terminates, and each point within the cluster becomes a distinct child leaf node. Other stopping criteria include reaching a maximum tree depth or achieving a sufficient level of intra-cluster similarity.
+
+\subsection{ATMTree Building}
+The primary challenge is to efficiently construct the hierarchy from a massive set of $N$ embeddings. While standard clustering algorithms are efficient for a single run, applying them recursively to build the tree creates a severe computational bottleneck. The need to re-process the entire corpus at each level makes construction prohibitively slow for large-scale datasets. We must avoid this repeated, full-dataset computation.
+
+To solve this, we propose a two-phase construction process. The entire procedure is orchestrated by a main algorithm that first creates a wide top-level partitioning and then recursively builds binary subtrees beneath each partition. This is formalized in Algorithm~\ref{alg:main_construction}.
+
+\begin{algorithm}[h!]
+\caption{ATMTree Main Construction}
+\label{alg:main_construction}
+\begin{algorithmic}
+    \State \textbf{Input:} The entire corpus of embeddings $\mathcal{D}$.
+    \State \textbf{Output:} The fully constructed ATMTree $\mathcal{T}$.
+    \State $\text{root} \gets \text{CreateRootNode}()$
+
+    \Comment{Phase 1: Coarse-grained partitioning to create Level 1 nodes}
+    \State $\text{lsh\_buckets} \gets \text{ApplyLSH}(\mathcal{D})$
+    
+    \For{each bucket $B$ in lsh\_buckets}
+        \State $v_{level1} \gets \text{SynthesizeParentNode}(B)$ \Comment{Use Algorithm 3 for synthesis}
+        \State \text{AddChild}(\text{root}, $v_{level1}$)
+        
+        \Comment{Phase 2: Build a binary subtree under this node}
+        \State \Call{BuildBinarySubtree}{$v_{level1}, B, 1$} \Comment{Invoke Algorithm 2}
+    \EndFor
+    \State \textbf{return} $\mathcal{T}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Coarse-Grained Partitioning with LSH}
+At each level of the tree's construction, the primary challenge is to efficiently form an initial set of candidate clusters from what may be a very large population of node embeddings. The goal is to rapidly identify approximate semantic neighborhoods without resorting to an exhaustive search.
+
+To accomplish this, we employ Locality-Sensitive Hashing (LSH) as our coarse-grained partitioning mechanism. LSH is specifically chosen for its ability to hash high-dimensional vectors such that items with high similarity are likely to collide in the same hash bucket. By applying LSH, we can quickly partition the entire set of vectors into a smaller, more manageable collection of candidate buckets $\{\mathcal{B}_1, \mathcal{B}_2, ...\}$. This phase effectively isolates promising groups of related nodes, dramatically reducing the scope of the problem for the subsequent fine-grained refinement phase.
+
+\subsubsection{Hierarchical Bisection via Bisecting K-Means}
+The coarse-grained nature of Locality-Sensitive Hashing (LSH) means that while it is fast, it offers no guarantee on the semantic cohesion of the resulting buckets. Consequently, the maximum angular deviation within a single LSH bucket can be large. This poses a critical problem for the retrieval process, which relies on using a parent node's embedding as a geometric proxy for its entire cluster.
+
+In order for this approximation to be computationally valid, and for the parent to faithfully represent all its children during a search, each LSH bucket must be refined into a hierarchy of verifiably cohesive clusters. To achieve this, we introduce a mandatory hierarchical refinement phase for each bucket, built upon the principles of Bisecting K-Means.
+
+Instead of treating a dispersed LSH bucket as a single entity, we recursively subdivide it to create a deep binary tree structure where each node represents a progressively more cohesive group of points. The core of this process is Bisecting K-Means: at each step, a cluster is split into two smaller, more compact sub-clusters using K-Means with $k=2$. This is applied recursively, building a hierarchy until the clusters are small enough to become leaf nodes or a maximum depth is reached. This ensures that every node in the final tree, from intermediate branches down to the leaves, meets the required cohesion for effective retrieval.
+
+The entire recursive bisection process, which is applied to each LSH bucket, is formalized in Algorithm~\ref{alg:bisecting_kmeans_subtree}.
+
+\begin{algorithm}[h!]
+\caption{Binary Subtree Construction via Recursive Bisecting K-Means}
+\label{alg:bisecting_kmeans_subtree}
+\begin{algorithmic}
+    \State \textbf{Input:} A parent node $v_p$, its associated data partition $\mathcal{D}_p$, current depth $d$.
+    \State \textbf{Hyperparameters:} Maximum depth $d_{max}$, minimum cluster size for splitting $s_{min}$.
+    \Procedure{BuildBinarySubtree}{$v_p, \mathcal{D}_p, d$}
+        \If{$d \ge d_{max}$ \textbf{or} $|\mathcal{D}_p| < s_{min}$}
+            \State \Comment{Base Case: Create leaf nodes from remaining data}
+            \For{each embedding $\mathbf{w}_i$ in $\mathcal{D}_p$}
+                \State $v_{leaf} \gets \text{CreateLeafNode}(\mathbf{w}_i)$
+                \State \text{AddChild}($v_p, v_{leaf}$)
+            \EndFor
+            \State \textbf{return}
+        \EndIf
+        
+        \Comment{Bisecting step: Split the current cluster into two}
+        \State $\mathcal{C}_{left}, \mathcal{C}_{right} \gets \text{SplitClusterWithKMeans}(\mathcal{D}_p, k=2)$
+        
+        \State \Comment{Create node for the left child and recurse}
+        \State $v_{left} \gets \text{SynthesizeParentNode}(\mathcal{C}_{left})$
+        \State \text{AddChild}($v_p, v_{left}$)
+        \State \Call{BuildBinarySubtree}{$v_{left}, \mathcal{C}_{left}, d+1$}
+
+        \State \Comment{Create node for the right child and recurse}
+        \State $v_{right} \gets \text{SynthesizeParentNode}(\mathcal{C}_{right}$)
+        \State \text{AddChild}($v_p, v_{right}$)
+        \State \Call{BuildBinarySubtree}{$v_{right}, \mathcal{C}_{right}, d+1$}
+    \EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Parent Node Synthesis}
+Once a cohesive cluster of children $\mathcal{C}$ is formed, we must synthesize a parent embedding $\mathbf{w}_p$ that faithfully represents their collective meaning. A simple arithmetic mean is suboptimal as it would grant equal influence to all children, including those at the periphery of the cluster's semantic space.
+
+To create a more representative parent, we employ a weighted average where the influence of each child is determined by its centrality. We use a Gaussian kernel based on the angular distance from the child's embedding $\mathbf{w}_{c_j}$ to the cluster's normalized centroid $\mathbf{c}$. The parent embedding $\mathbf{w}_p$ is thus computed as:
+\begin{align}
+    \beta_j &= \exp\left(-\frac{\arccos(\mathbf{w}_{c_j} \cdot \mathbf{c})^2}{2\sigma^2}\right) \\
+    \mathbf{w}_p &= \frac{\sum_{j} \beta_j \cdot \mathbf{w}_{c_j}}{\left\|\sum_{j} \beta_j \cdot \mathbf{w}_{c_j}\right\|_2}
+\end{align}
+where $\sigma$ is a level-dependent bandwidth parameter. This method ensures that nodes closer to the conceptual center contribute more significantly to the parent's identity. The entire synthesis process is formalized in Algorithm~\ref{alg:synthesis}.
+
+
+\begin{algorithm}[h!]
+\caption{Parent Node Synthesis}
+\label{alg:synthesis}
+\begin{algorithmic}[1]
+    \State \textbf{Input:} A cohesive cluster of child nodes $C$, bandwidth parameter $\sigma$.
+    \State \textbf{Output:} A new parent node $v_p$.
+
+    \Comment{Compute the normalized centroid of the cluster}
+    \State $\mathbf{c}_{sum} \gets \sum_{v_j \in C} \mathbf{w}_{v_j}$
+    \State $\mathbf{c} \gets \mathbf{c}_{sum} / ||\mathbf{c}_{sum}||_2$
+
+    \State $\mathbf{w}_{p\_sum} \gets \mathbf{0}$ \Comment{Initialize weighted sum vector for the parent}
+
+    \Comment{Calculate weighted sum of child embeddings}
+    \For{each child node $v_j$ in $C$}
+        \State $\theta_j \gets \arccos(\mathbf{w}_{v_j} \cdot \mathbf{c})$ \Comment{Angular distance to centroid}
+        \State $\beta_j \gets \exp(-\frac{\theta_j^2}{2\sigma^2})$ \Comment{Gaussian weight}
+        \State $\mathbf{w}_{p\_sum} \gets \mathbf{w}_{p\_sum} + \beta_j \cdot \mathbf{w}_{v_j}$
+    \EndFor
+
+    \Comment{Normalize to get the final parent embedding}
+    \State $\mathbf{w}_p \gets \mathbf{w}_{p\_sum} / ||\mathbf{w}_{p\_sum}||_2$
+
+    \State $v_p \gets \text{CreateNode}(\mathbf{w}_p)$ \Comment{Create the node object}
+    \State \textbf{return} $v_p$
+\end{algorithmic}
+\end{algorithm}
+\subsection*{Retrieval Process}
+The hierarchical structure of the ATMTree enables a highly efficient retrieval process that avoids a full scan of all leaf nodes. We employ a fully threshold-driven, two-phase hybrid retrieval strategy, detailed below.
+
+\subsubsection*{Threshold-Guided Tree Traversal}
+This phase rapidly identifies a candidate set of nodes, $\mathcal{C}_{\text{cand}}$. Given a query vector $\mathbf{q}$, the search performs a recursive, depth-first traversal starting from the root. A branch is explored only if the similarity between a child node and the query exceeds a traversal threshold, $\theta_{\text{traverse}}$. Let $S(v, \mathbf{q})$ denote the similarity $\text{sim}(\mathbf{w}_v, \mathbf{q})$. The set of children to explore from a node $v$ is:
+\begin{equation}
+    \mathcal{C}'_v = \{c \in \mathcal{C}_v \mid S(c, \mathbf{q}) > \theta_{\text{traverse}}\}
+\end{equation}
+The full set of visited candidates, $\mathcal{C}_{\text{cand}}$, is collected by recursively exploring these pruned branches.
+
+\subsubsection*{Final Candidate Selection}
+
+The candidate set $\mathcal{C}_{\text{cand}}$ contains potentially relevant nodes from various levels of the hierarchy. To produce the final result, this set is filtered using a final cutoff threshold, $\theta_{\text{cutoff}}$. The final result set, $\mathcal{V}_{\text{result}}$, is defined as:
+\begin{equation}
+    \mathcal{V}_{\text{result}} = \{v \in \mathcal{C}_{\text{cand}} \mid S(v, \mathbf{q}) > \theta_{\text{cutoff}}\}
+\end{equation}
+The resulting nodes are then sorted by similarity to provide a ranked list. This two-threshold approach allows a general query to retrieve high-level summary nodes, while a specific query can retrieve more detailed leaf nodes.
+
+% \begin{algorithm}[h!]
+% \caption{ATMTree Threshold-Driven Retrieval}
+% \label{alg:retrieval}
+% \begin{algorithmic}[1]
+%     \Statex \textbf{Input:} Query vector $q$, Tree root $T_{root}$, Traversal threshold $\theta_{traverse}$, Cutoff threshold $\theta_{cutoff}$.
+%     \Statex \textbf{Output:} Sorted list of result nodes $V_{result}$.
+
+%     \State $C_{cand} \gets \emptyset$ \Comment{Initialize empty set for candidates}
+    
+%     \Statex \Comment{Threshold-Guided Tree Traversal}
+%     \State $\text{stack} \gets [T_{root}]$ \Comment{Initialize traversal stack with the root}
+%     \While{stack is not empty}
+%         \State $v \gets \text{stack.pop()}$
+%         \State $C_{cand} \gets C_{cand} \cup \{v\}$ \Comment{Collect every visited node}
+%         \For{each child node $c$ in $v.C_v$}
+%             \If{$\text{similarity}(c.w, q) > \theta_{traverse}$}
+%                 \State stack.append($c$) \Comment{Add relevant children to explore}
+%             \EndIf
+%         \EndFor
+%     \EndWhile
+
+%     \Statex \Comment{Final Candidate Selection}
+%     \State $V_{result} \gets \emptyset$
+%     \For{each node $v$ in $C_{cand}$}
+%         \If{$\text{similarity}(v.w, q) > \theta_{cutoff}$}
+%             \State $V_{result} \gets V_{result} \cup \{v\}$
+%         \EndIf
+%     \EndFor
+    
+%     \State Sort $V_{result}$ in descending order of similarity to $q$.
+%     \State \textbf{return} $V_{result}$
+% \end{algorithmic}
+% \end{algorithm}
+

@@ -1,0 +1,19 @@
+ATMTree 项目软件开发计划 (Software Development Plan)核心理念:模块化 (Modularity): 严格遵循您提供的 atm_tree_builder.md 中的多文件结构，确保每个模块职责单一、高度解耦。自底向上 (Bottom-Up): 从最基础、无依赖的模块开始编码，逐步构建更复杂的上层模块。这能保证每一步都有坚实的基础。测试驱动 (Test-Driven): 为每个核心功能（尤其是数学运算）先编写测试用例，再进行功能实现。这能确保代码的正确性，并在后续修改中提供安全保障。第一阶段：项目初始化与环境搭建创建项目骨架: 根据下方的“项目文件结构蓝图”文档，在您的本地计算机上创建所有文件夹和空的 .py 文件。设置 Conda 环境:conda create -n atm_exp python=3.10 -y
+conda activate atm_exp
+
+安装依赖: 创建 requirements.txt 文件并安装。pip install -r requirements.txt 
+# (requirements.txt 内容见上一条回复)
+
+初始化测试框架: 在项目根目录下，创建一个 pytest.ini 文件，以告诉 pytest 如何找到您的代码。[pytest]
+pythonpath = .
+
+第二阶段：核心库 atm_tree_builder 的编码 (自底向上)这是整个项目的核心。我们将按照从简到繁的顺序，逐一实现每个模块。步骤 1: data_structures.py 和 parameters.py (地基)任务:在 atm_tree_builder/data_structures.py 中，实现 TreeNode 类。这个类只包含数据属性，没有复杂的逻辑。在 atm_tree_builder/parameters.py 中，使用 dataclasses 实现 ATMBuilderParameters 类。原因: 这两个模块没有任何外部依赖，是整个项目最稳固的基石。先完成它们，后续所有模块都可以安全地导入和使用。**步骤 2: utils/math_ops.py (工具箱) - 测试驱动开发 **任务:先写测试: 在 tests/test_math_ops.py 文件中，为即将实现的数学函数编写测试用例。示例 test_l2_normalize:import numpy as np
+from atm_tree_builder.utils import math_ops
+
+def test_l2_normalize():
+    vec = np.array([3, 4])
+    normalized_vec = math_ops.l2_normalize(vec)
+    assert np.allclose(normalized_vec, np.array([0.6, 0.8]))
+    assert np.isclose(np.linalg.norm(normalized_vec), 1.0)
+
+再写实现: 在 atm_tree_builder/utils/math_ops.py 中，使用 numpy 实现 l2_normalize, compute_centroid_direction 等函数，直到所有测试用例都能通过。运行测试: 在项目根目录的终端中运行 pytest 命令，确保所有测试都显示“PASSED”。原因: 数学运算的正确性是算法的生命线。通过 TDD，我们可以 100% 确信我们的基础工具是准确无误的。步骤 3: clustering 子模块 (核心逻辑)现在我们有了坚实的基础，可以开始构建算法的核心部分。clustering/lsh.py:任务: 封装 faiss 库的 LSH 功能。创建一个 LSHClusterer 类，其 cluster 方法接收节点列表，返回分好桶的节点列表 (List[List[TreeNode]])。依赖: data_structures.py。clustering/aggregation.py:任务: 实现 create_parent_from_cluster 函数。该函数接收一个（通过后续步骤确认是）内聚的簇，并根据 ATMTree.tex 中的公式 (1) 和 (2) [cite: ATMTree.tex] 计算父节点的加权平均嵌入。依赖: data_structures.py, parameters.py, utils/math_ops.py。clustering/refinement.py:任务: 这是算法最复杂的部分。实现 refine_bucket, _subdivide_cluster_pca, check_cluster_cohesion 等函数。此模块的核心是递归逻辑，它会不断地分割簇，直到满足内聚性约束。依赖: data_structures.py, parameters.py, utils/math_ops.py。步骤 4: tree_builder.py (总指挥)任务:实现 ATMTreeBuilder 主类。实现 build 方法，它作为总指挥，负责整个构建流程的编排。它将调用 lsh.py 进行初始分桶，然后对每个桶调用 refinement.py 进行精炼，最后使用 aggregation.py 创建父节点。管理 node_map 和 next_node_id 等全局状态。原因: 这是顶层模块，它将所有底层组件像乐高积木一样拼装起来，完成最终的任务。第三阶段：集成与应用当 atm_tree_builder 库完成后，我们开始编写调用它的脚本。编写示例和集成测试:任务: 在 examples/build_sample_tree.py 中，创建一个小型的随机数据集，调用 ATMTreeBuilder 来构建一棵完整的树，并打印树的一些基本信息（如节点总数、树的高度等）。目的: 验证整个流程是否能顺利跑通，是最终实验前的重要“冒烟测试”。实现 RAG 流水线:任务: 在 atm_rag_pipeline.py 中，编写 ATM_RAG 类。__init__: 加载构建好的树 (.pkl 文件)、语料库、嵌入模型和生成式 LLM。retrieve: 实现 ATMTree.tex 中描述的“阈值引导的树遍历”算法。generate: 封装调用 LLM 生成答案的逻辑。编写评估脚本:任务: 完善 scripts/run_evaluation.py，使其能够加载评测数据集，调用 ATM_RAG 的 answer_question 方法，并使用 evaluate 库计算最终得分。这个开发计划将引导您以一种结构化、可控的方式完成项目编码，大大降低调试难度，并产出高质量、易于维护的代码。

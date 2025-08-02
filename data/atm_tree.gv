@@ -1,0 +1,247 @@
+// ATMTree
+digraph {
+	0 [label="ID: 0
+Leaf: False
+Embeddings: 21
+Method: Root"]
+	0 -> 1
+	1 [label="ID: 1
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	1 -> 2
+	2 [label="ID: 2
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 3
+	3 [label="ID: 3
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	3 -> 4
+	4 [label="ID: 4
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 5
+	5 [label="ID: 5
+Leaf: False
+Embeddings: 2
+Method: LSH"]
+	5 -> 6
+	6 [label="ID: 6
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	6 -> 7
+	7 [label="ID: 7
+Leaf: True
+Embeddings: 1
+Method: "]
+	5 -> 8
+	8 [label="ID: 8
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	8 -> 9
+	9 [label="ID: 9
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 10
+	10 [label="ID: 10
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	10 -> 11
+	11 [label="ID: 11
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 12
+	12 [label="ID: 12
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	12 -> 13
+	13 [label="ID: 13
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 14
+	14 [label="ID: 14
+Leaf: False
+Embeddings: 3
+Method: LSH"]
+	14 -> 15
+	15 [label="ID: 15
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	15 -> 16
+	16 [label="ID: 16
+Leaf: True
+Embeddings: 1
+Method: "]
+	14 -> 17
+	17 [label="ID: 17
+Leaf: False
+Embeddings: 2
+Method: K-Means"]
+	17 -> 18
+	18 [label="ID: 18
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	18 -> 19
+	19 [label="ID: 19
+Leaf: True
+Embeddings: 1
+Method: "]
+	17 -> 20
+	20 [label="ID: 20
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	20 -> 21
+	21 [label="ID: 21
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 22
+	22 [label="ID: 22
+Leaf: False
+Embeddings: 2
+Method: LSH"]
+	22 -> 23
+	23 [label="ID: 23
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	23 -> 24
+	24 [label="ID: 24
+Leaf: True
+Embeddings: 1
+Method: "]
+	22 -> 25
+	25 [label="ID: 25
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	25 -> 26
+	26 [label="ID: 26
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 27
+	27 [label="ID: 27
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	27 -> 28
+	28 [label="ID: 28
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 29
+	29 [label="ID: 29
+Leaf: False
+Embeddings: 3
+Method: LSH"]
+	29 -> 30
+	30 [label="ID: 30
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	30 -> 31
+	31 [label="ID: 31
+Leaf: True
+Embeddings: 1
+Method: "]
+	29 -> 32
+	32 [label="ID: 32
+Leaf: False
+Embeddings: 2
+Method: K-Means"]
+	32 -> 33
+	33 [label="ID: 33
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	33 -> 34
+	34 [label="ID: 34
+Leaf: True
+Embeddings: 1
+Method: "]
+	32 -> 35
+	35 [label="ID: 35
+Leaf: False
+Embeddings: 1
+Method: K-Means"]
+	35 -> 36
+	36 [label="ID: 36
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 37
+	37 [label="ID: 37
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	37 -> 38
+	38 [label="ID: 38
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 39
+	39 [label="ID: 39
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	39 -> 40
+	40 [label="ID: 40
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 41
+	41 [label="ID: 41
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	41 -> 42
+	42 [label="ID: 42
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 43
+	43 [label="ID: 43
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	43 -> 44
+	44 [label="ID: 44
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 45
+	45 [label="ID: 45
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	45 -> 46
+	46 [label="ID: 46
+Leaf: True
+Embeddings: 1
+Method: "]
+	0 -> 47
+	47 [label="ID: 47
+Leaf: False
+Embeddings: 1
+Method: LSH"]
+	47 -> 48
+	48 [label="ID: 48
+Leaf: True
+Embeddings: 1
+Method: "]
+}

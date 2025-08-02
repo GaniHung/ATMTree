@@ -1,0 +1,23 @@
+name: atmtree-env
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.10
+  - numpy
+  - scikit-learn
+  - datasets
+  - evaluate
+  - transformers
+  - pytorch
+  - faiss-cpu
+  - pandas
+  - matplotlib
+  - seaborn
+  - pytest
+  - graphviz
+  - pip:
+    - lshashpy3
+    - tqdm
+    - jupyter
+    - nbformat

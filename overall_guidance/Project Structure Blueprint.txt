@@ -1,0 +1,41 @@
+atm_tree_project/
+├── atm_tree_builder/           # 核心 Python 包
+│   ├── __init__.py
+│   ├── data_structures.py      # -> (开发步骤 1) 定义 TreeNode
+│   ├── parameters.py           # -> (开发步骤 1) 定义构建参数
+│   ├── tree_builder.py         # -> (开发步骤 4) ATMTreeBuilder 主类
+│   │
+│   ├── clustering/             # -> (开发步骤 3) 聚类算法模块
+│   │   ├── __init__.py
+│   │   ├── aggregation.py      #    计算父节点
+│   │   ├── lsh.py              #    LSH 初始分桶
+│   │   └── refinement.py       #    递归精炼与内聚性检查
+│   │
+│   └── utils/                  # -> (开发步骤 2) 基础工具模块
+│       ├── __init__.py
+│       └── math_ops.py         #    高性能数学运算
+│
+├── data/                       # 存放所有数据文件
+│   ├── corpus_wikipedia/       #    下载的语料库
+│   ├── eval/                   #    下载的评测数据集 (NQ, TQA, etc.)
+│   ├── corpus_embeddings.npy   #    生成的语料库嵌入
+│   └── atm_tree.pkl            #    构建好的树
+│
+├── notebooks/                  # Jupyter Notebooks
+│   ├── 1_prepare_data.ipynb    #    数据准备与嵌入生成
+│   └── 2_analyze_results.ipynb #    结果分析与可视化
+│
+├── scripts/                    # 可执行脚本
+│   ├── build_tree.py           #    调用 tree_builder 构建并保存树
+│   └── run_evaluation.py       #    运行端到端评测
+│
+├── tests/                      # 测试代码
+│   ├── __init__.py
+│   ├── test_math_ops.py        #    math_ops 的单元测试
+│   └── test_tree_builder.py    #    tree_builder 的集成测试
+│
+├── pyproject.toml              # (可选，推荐) 用于定义项目元数据和依赖
+├── pytest.ini                  # Pytest 配置文件
+├── requirements.txt            # 项目依赖列表
+└── README.md                   # 项目说明文档
+
